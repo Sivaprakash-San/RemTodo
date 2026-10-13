@@ -1,0 +1,19 @@
+#!/bin/sh
+# Launch RemTodo from this checkout. Uses the system Python, which ships the GTK bindings.
+HERE="$(dirname "$(readlink -f "$0")")"
+
+# Launched from inside a snap (e.g. a VS Code snap terminal): drop the snap's GTK/GIO/locale
+# paths, which otherwise load the snap's libraries into the system Python and crash it.
+if [ -n "$SNAP" ]; then
+    [ -n "$XDG_DATA_DIRS_VSCODE_SNAP_ORIG" ] && export XDG_DATA_DIRS="$XDG_DATA_DIRS_VSCODE_SNAP_ORIG"
+    [ -n "$XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG" ] && export XDG_CONFIG_DIRS="$XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG"
+    unset GTK_PATH GTK_EXE_PREFIX GTK_IM_MODULE_FILE GDK_PIXBUF_MODULE_FILE GDK_PIXBUF_MODULEDIR \
+          GIO_MODULE_DIR GSETTINGS_SCHEMA_DIR LOCPATH GDK_BACKEND
+    for var in $(env | sed -n 's/^\(SNAP[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$var"; done
+fi
+# This launcher only runs unsandboxed. libnotify sniffs /proc/self/cgroup and, when started from
+# a snap's terminal, would switch to portal notifications, which lose the Snooze/Done buttons.
+export NOTIFY_IGNORE_PORTAL=1
+
+export PYTHONPATH="$HERE/..${PYTHONPATH:+:$PYTHONPATH}"
+exec /usr/bin/python3 -m remtodo "$@"
